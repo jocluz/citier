@@ -6,7 +6,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import Search from "@/components/Search.vue";
+import Search from "@/components/cities/Search.vue";
 
 export default Vue.extend({
   name: "Home",
@@ -15,3 +15,10 @@ export default Vue.extend({
   }
 });
 </script>
+
+<style lang="scss" scoped>
+.home {
+  display: flex;
+  flex-grow: 1;
+}
+</style>
