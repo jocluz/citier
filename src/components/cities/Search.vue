@@ -18,11 +18,18 @@
               <TextHighlight :queries="[search]">{{ item.name }}</TextHighlight>
             </div>
             <div class="search__list__item__desc">
-              <TextHighlight :queries="[search]">{{ item.subcountry }} - {{ item.country }}</TextHighlight>
+              <TextHighlight :queries="[search]">
+                {{ item.subcountry }} - {{ item.country }}
+              </TextHighlight>
             </div>
           </div>
         </template>
       </infinite-scroll>
+
+      <div class="search__empty-state" v-if="showEmptyState">
+        <i class="fas fa-search"></i>
+        No results found
+      </div>
 
       <div
         class="search__loading"
@@ -49,15 +56,18 @@ export default Vue.extend({
     InfiniteScroll,
     TextHighlight
   },
-  computed: {
-    ...mapGetters("cities", ["cities", "nextLink"])
-  },
   data() {
     return {
       loading: false,
       retries: MAX_RETRIES,
       search: ""
     };
+  },
+  computed: {
+    ...mapGetters("cities", ["cities", "nextLink"]),
+    showEmptyState(): boolean {
+      return !this.cities.length && !this.loading;
+    }
   },
   created() {
     this.fetchCities();
@@ -90,7 +100,7 @@ export default Vue.extend({
       if (!this.nextLink || this.loading) return;
       this.fetchCities(this.search);
     },
-    filterCities: debounce(function(search) {
+    filterCities: debounce(function(this: any, search: string) {
       this.clearCities();
       this.fetchCities(search);
     }, 500)
@@ -130,6 +140,22 @@ export default Vue.extend({
         -webkit-transition: all 0.5s linear;
         transition: all 0.5s linear;
       }
+    }
+  }
+
+  &__empty-state {
+    display: flex;
+    justify-content: center;
+    padding: 50px;
+    flex-direction: column;
+    align-items: center;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #009898;
+
+    .fa-search {
+      display: flex;
+      padding-bottom: 10px;
     }
   }
 

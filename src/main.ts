@@ -3,6 +3,8 @@ import App from "./App.vue";
 import router from "./router";
 import store from "./store";
 import "element-ui/lib/theme-chalk/index.css";
+import "@fortawesome/fontawesome-free/css/all.css";
+import "@fortawesome/fontawesome-free/js/all.js";
 
 import { Card, Loading, Message, Input } from "element-ui";
 Vue.use(Card);
