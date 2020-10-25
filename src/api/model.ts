@@ -1,10 +1,11 @@
-import { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
+import { AxiosRequestConfig, AxiosResponse, AxiosError, Canceler } from "axios";
 
 /**
  *  This interface extends the AxiosRequestConfig one with custom properties.
  */
 export interface RequestConfig<T = any> extends AxiosRequestConfig {
   data?: T;
+  cancel?: (cancel: Canceler) => void;
 }
 
 /**

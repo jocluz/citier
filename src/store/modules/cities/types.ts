@@ -22,7 +22,7 @@ export type CityInfo = {
 };
 
 export type CityParams = {
-  offset?: number;
-  limit?: number;
+  offset?: string;
+  limit?: string;
   filter?: string;
 };

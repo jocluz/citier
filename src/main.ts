@@ -2,6 +2,14 @@ import Vue from "vue";
 import App from "./App.vue";
 import router from "./router";
 import store from "./store";
+import "element-ui/lib/theme-chalk/index.css";
+
+import { Card, Loading, Message, Input } from "element-ui";
+Vue.use(Card);
+Vue.use(Loading);
+Vue.use(Input);
+
+Vue.prototype.$message = Message;
 
 Vue.config.productionTip = false;
 

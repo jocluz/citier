@@ -34,10 +34,16 @@ export const makeRequest = <T = any>(config: AxiosRequestConfig): Promise<T> =>
  * @param config RequestConfig
  */
 function requestFactory<T = any>(method: HTTPVerb, config: RequestConfig<T>) {
+  const { cancel, ...axiosRequest } = config;
+
   const request: AxiosRequestConfig = {
-    ...config,
+    ...axiosRequest,
     method
   };
+
+  if (cancel) {
+    request.cancelToken = new axios.CancelToken(cancel);
+  }
 
   return request;
 }

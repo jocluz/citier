@@ -1,35 +1,62 @@
 <template>
   <div class="search">
-    <div v-if="loading">Loading...</div>
-    <div class="search__list">
-      <InfiniteScroll :items="cities" @refetch="fetchCities">
+    <!-- INPUT TO SEARCH CITIES -->
+    <el-input
+      suffix-icon="el-icon-search"
+      class="search__input"
+      v-model="search"
+      placeholder="Search a city"
+      @input="filterCities"
+    ></el-input>
+
+    <!-- CITIES LIST WITH LAZY LOADING -->
+    <el-card class="box-card search__list">
+      <infinite-scroll :items="cities" @refetch="loadMore">
         <template v-slot:item="{ item }">
           <div class="search__list__item">
-            <div class="search__list__item__title">{{ item.name }}</div>
-            <div class="search__list__item__desc">{{ item.subcountry }} - {{ item.country }}</div>
+            <div class="search__list__item__title">
+              <TextHighlight :queries="[search]">{{ item.name }}</TextHighlight>
+            </div>
+            <div class="search__list__item__desc">
+              <TextHighlight :queries="[search]">{{ item.subcountry }} - {{ item.country }}</TextHighlight>
+            </div>
           </div>
         </template>
-      </InfiniteScroll>
-    </div>
+      </infinite-scroll>
+
+      <div
+        class="search__loading"
+        element-loading-spinner="el-icon-loading"
+        v-if="loading"
+        v-loading="loading"
+      ></div>
+    </el-card>
   </div>
 </template>
 
 <script lang="ts">
 import Vue from "vue";
+import { mapActions, mapGetters, mapMutations } from "vuex";
 import InfiniteScroll from "../InfiniteScroll.vue";
-import { mapGetters, mapActions } from "vuex";
+import debounce from "lodash.debounce";
+import TextHighlight from "vue-text-highlight";
+
+const MAX_RETRIES = 3;
 
 export default Vue.extend({
   name: "Search",
-  computed: {
-    ...mapGetters("cities", ["cities"])
-  },
   components: {
-    InfiniteScroll
+    InfiniteScroll,
+    TextHighlight
+  },
+  computed: {
+    ...mapGetters("cities", ["cities", "nextLink"])
   },
   data() {
     return {
-      loading: false
+      loading: false,
+      retries: MAX_RETRIES,
+      search: ""
     };
   },
   created() {
@@ -37,18 +64,36 @@ export default Vue.extend({
   },
   methods: {
     ...mapActions("cities", ["getCities"]),
-    async fetchCities() {
-      if (this.loading) return;
-
+    ...mapMutations("cities", ["clearCities"]),
+    async fetchCities(filter = "") {
       try {
         this.loading = true;
-        await this.getCities();
+        await this.getCities(filter);
+        this.retries = MAX_RETRIES;
         this.loading = false;
       } catch (error) {
         this.loading = false;
-        console.log(error);
+        if (this.retries) {
+          this.retries--;
+          setTimeout(() => {
+            this.fetchCities(filter);
+          }, 1000);
+        } else {
+          this.$message.error({
+            type: "error",
+            message: error.response.data.message
+          });
+        }
       }
-    }
+    },
+    loadMore() {
+      if (!this.nextLink || this.loading) return;
+      this.fetchCities(this.search);
+    },
+    filterCities: debounce(function(search) {
+      this.clearCities();
+      this.fetchCities(search);
+    }, 500)
   }
 });
 </script>
@@ -77,9 +122,48 @@ export default Vue.extend({
       }
 
       &__desc {
-        color: #c0c4cc;
+        color: #98b3b3;
+      }
+
+      &:hover {
+        background-color: #b5ab621a;
+        -webkit-transition: all 0.5s linear;
+        transition: all 0.5s linear;
       }
     }
+  }
+
+  &__loading {
+    position: absolute !important;
+    bottom: 50px;
+    left: 0;
+    right: 0;
+  }
+
+  ::v-deep .el-loading-spinner i {
+    font-size: 2rem;
+    color: #009898;
+    font-weight: 700;
+  }
+
+  ::v-deep .el-card__body {
+    position: relative;
+    min-height: 200px;
+    padding: 0;
+  }
+
+  ::v-deep .el-loading-mask {
+    height: 4rem;
+    position: absolute !important;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  ::v-deep .text__highlight {
+    background: #c0c4cc38;
+    font-weight: 700;
+    color: inherit;
   }
 }
 </style>
