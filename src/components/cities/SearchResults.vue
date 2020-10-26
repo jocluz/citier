@@ -87,30 +87,30 @@ export default Vue.extend({
     align-items: center;
     cursor: pointer;
     padding: 1rem;
-    -webkit-box-shadow: 0 10px 6px -6px #7777770d;
-    -moz-box-shadow: 0 10px 6px -6px #7777770d;
-    box-shadow: 0 10px 6px -6px #7777770d;
+    -webkit-box-shadow: $main-shadow;
+    -moz-box-shadow: $main-shadow;
+    box-shadow: $main-shadow;
 
     .info {
       flex-grow: 1;
       &__title {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
         font-weight: 400;
-        color: #009898;
+        color: $main-color;
       }
 
       &__desc {
-        color: #98b3b3;
+        color: $text-color;
       }
     }
 
     &:hover {
-      background-color: #edffb8;
+      background-color: $secondary-color;
       -webkit-transition: all 0.5s linear;
       transition: all 0.5s linear;
 
       .el-icon-check {
-        color: #009898;
+        color: $main-color;
         -webkit-transition: all 0.5s linear;
         transition: all 0.5s linear;
       }
@@ -123,16 +123,15 @@ export default Vue.extend({
     }
 
     &.selected {
-      background-color: #e4e4e48a;
       .el-icon-check {
-        color: #009898;
+        color: $main-color;
         -webkit-transition: all 0.5s linear;
         transition: all 0.5s linear;
       }
     }
 
     .el-icon-loading {
-      color: #009898;
+      color: $main-color;
     }
 
     .el-icon-check {

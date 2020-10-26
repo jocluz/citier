@@ -11,40 +11,54 @@
     </el-input>
 
     <el-card class="box-card search__list">
-      <!-- PREFERRED CITIES -->
-      <i
-        v-if="preferredCitiesWithError"
-        class="el-icon-warning warning-icon"
-        @click="refetchPreferred"
-      ></i>
-      <Preferred
-        v-if="!loading"
-        v-loading="loadingPreferred"
-        element-loading-spinner="el-icon-loading"
-        :loading="saving"
-        :items="preferredCities"
-        itemId="geonameid"
-        @itemClicked="saveCity($event, false)"
-      />
+      <div>
+        <!-- PREFERRED CITIES -->
+        <div class="section-header">
+          <div>Your favourites cities</div>
+          <i
+            v-if="preferredCitiesWithError"
+            class="el-icon-refresh refresh-icon"
+            @click="refetchPreferred"
+          ></i>
+        </div>
 
-      <!-- CITIES LIST WITH LAZY LOADING -->
-      <SearchResults
-        :loading="saving"
-        :items="cities"
-        :selectedItems="preferredCities"
-        :highlight="search"
-        itemId="geonameid"
-        @loadMore="loadMore"
-        @itemClicked="toggleCity($event)"
-      />
+        <Preferred
+          :saving="saving"
+          v-loading="loadingPreferred"
+          class="search__preferred__loading"
+          element-loading-spinner="el-icon-loading"
+          :loading="preferredCitiesLoading"
+          :items="preferredCities"
+          itemId="geonameid"
+          @itemClicked="saveCity($event, false)"
+          @errorClicked="refetchPreferredCity"
+        />
+      </div>
 
-      <EmptyState v-if="showEmptyState" />
+      <div>
+        <!-- CITIES LIST WITH LAZY LOADING -->
+        <div class="section-header">
+          <div>Search results</div>
+        </div>
 
-      <div
-        class="search__loading"
-        element-loading-spinner="el-icon-loading"
-        v-loading="isLoadingData"
-      ></div>
+        <SearchResults
+          :loading="saving"
+          :items="cities"
+          :selectedItems="preferredCities"
+          :highlight="search"
+          itemId="geonameid"
+          @loadMore="loadMore"
+          @itemClicked="toggleCity($event)"
+        />
+
+        <EmptyState v-if="showEmptyState" />
+
+        <div
+          class="search__loading"
+          element-loading-spinner="el-icon-loading"
+          v-loading="loading"
+        ></div>
+      </div>
     </el-card>
   </div>
 </template>
@@ -81,13 +95,11 @@ export default Vue.extend({
       "cities",
       "nextLink",
       "preferredCities",
-      "preferredCitiesWithError"
+      "preferredCitiesWithError",
+      "preferredCitiesLoading"
     ]),
     showEmptyState(): boolean {
       return !this.cities.length && !this.loading;
-    },
-    isLoadingData(): boolean {
-      return this.loading || this.loadingPreferred;
     }
   },
   created() {
@@ -99,7 +111,8 @@ export default Vue.extend({
       "getCities",
       "getPreferredCities",
       "savePreferredCities",
-      "reloadFailedPreferred"
+      "reloadFailedPreferred",
+      "getCityInfo"
     ]),
     ...mapMutations("cities", ["clearCities"]),
     async fetchCities(filter = "") {
@@ -184,6 +197,10 @@ export default Vue.extend({
         this.reloadFailedPreferred();
       }
     },
+    refetchPreferredCity(city: CityInfo): void {
+      if (!city) return;
+      this.getCityInfo([city.geonameid]);
+    },
     isSaving(city: CityInfo): boolean {
       return this.saving[city.geonameid];
     }
@@ -193,6 +210,9 @@ export default Vue.extend({
 
 <style scoped lang="scss">
 .search {
+  $text-highlight-color: #c0c4cc38;
+  $input-shadow: 0 1px 12px 0 rgba(0, 0, 0, 0.1);
+  $input-border-color: #ebeef5;
   display: flex;
   flex-direction: column;
   max-width: 500px;
@@ -201,12 +221,20 @@ export default Vue.extend({
     margin-bottom: 10px;
     border-radius: 4px;
     font-size: 1.2rem;
-    box-shadow: 0 1px 12px 0 rgba(0, 0, 0, 0.1);
+    box-shadow: $input-shadow;
   }
 
   &__list {
     overflow-y: auto;
     flex-grow: 1;
+
+    .section-header {
+      display: flex;
+      background: $secondary-color;
+      padding: 5px 10px;
+      color: $main-color;
+      box-shadow: $main-shadow;
+    }
 
     &__item,
     &__preferred__item {
@@ -214,43 +242,32 @@ export default Vue.extend({
       align-items: center;
       cursor: pointer;
       padding: 1rem;
-      -webkit-box-shadow: 0 10px 6px -6px #7777770d;
-      -moz-box-shadow: 0 10px 6px -6px #7777770d;
-      box-shadow: 0 10px 6px -6px #7777770d;
+      -webkit-box-shadow: $main-shadow;
+      -moz-box-shadow: $main-shadow;
+      box-shadow: $main-shadow;
 
       &__info {
         flex-grow: 1;
         &__title {
           font-size: 1.4rem;
           font-weight: 400;
-          color: #009898;
+          color: $main-color;
         }
 
         &__desc {
-          color: #98b3b3;
+          color: $text-color;
         }
       }
 
       &:hover {
-        background-color: #edffb8;
+        background-color: $secondary-color;
         -webkit-transition: all 0.5s linear;
         transition: all 0.5s linear;
 
         .el-icon-check {
-          color: #009898;
+          color: $main-color;
           -webkit-transition: all 0.5s linear;
           transition: all 0.5s linear;
-        }
-      }
-
-      &.selected {
-        background: #edffb8;
-
-        .el-icon-delete-solid,
-        .el-icon-loading {
-          align-self: flex-start;
-          color: #009898;
-          font-size: 1rem;
         }
       }
 
@@ -261,7 +278,7 @@ export default Vue.extend({
       }
 
       .el-icon-loading {
-        color: #009898;
+        color: $main-color;
       }
 
       .el-icon-check {
@@ -299,12 +316,12 @@ export default Vue.extend({
         &__title {
           font-size: 1rem;
           font-weight: 400;
-          color: #009898;
+          color: $main-color;
         }
 
         &__desc {
           font-size: 0.8rem;
-          color: #98b3b3;
+          color: $text-color;
         }
       }
     }
@@ -318,7 +335,7 @@ export default Vue.extend({
     align-items: center;
     font-size: 1.2rem;
     font-weight: 600;
-    color: #009898;
+    color: $main-color;
     opacity: 0.8;
 
     .el-icon-search {
@@ -330,25 +347,39 @@ export default Vue.extend({
     }
   }
 
+  &__preferred__loading {
+    min-height: 50px;
+  }
+
   &__loading {
     position: absolute !important;
     bottom: 50px;
     left: 0;
     right: 0;
+
+    ::v-deep .el-loading-mask {
+      height: 4rem;
+      position: absolute !important;
+      bottom: 0;
+      left: 0;
+      right: 0;
+    }
   }
 
-  .warning-icon {
-    position: absolute;
-    right: 5px;
-    top: 10px;
-    font-size: 1.3rem;
-    color: #ff2929;
+  .refresh-icon {
+    font-size: 1rem;
+    color: $error-color;
     cursor: pointer;
+    padding-left: 10px;
+    justify-content: flex-end;
+    display: flex;
+    flex-grow: 1;
+    align-self: center;
   }
 
   ::v-deep .el-loading-spinner i {
     font-size: 2rem;
-    color: #009898;
+    color: $main-color;
     font-weight: 700;
   }
 
@@ -358,22 +389,14 @@ export default Vue.extend({
     padding: 0;
   }
 
-  ::v-deep .el-loading-mask {
-    height: 4rem;
-    position: absolute !important;
-    bottom: 0;
-    left: 0;
-    right: 0;
-  }
-
   ::v-deep .text__highlight {
-    background: #c0c4cc38;
+    background: $text-highlight-color;
     font-weight: 700;
     color: inherit;
   }
 
   ::v-deep .el-input__inner {
-    border: 1px solid #ebeef5;
+    border: 1px solid $input-border-color;
   }
 }
 </style>

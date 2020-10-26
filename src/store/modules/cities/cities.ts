@@ -55,6 +55,9 @@ const citiesModule: Module<State, {}> = {
     },
     preferredCitiesWithError(state: State) {
       return state.preferredCities.withError;
+    },
+    preferredCitiesLoading(state: State) {
+      return state.preferredCities.loading;
     }
   },
 
@@ -90,15 +93,15 @@ const citiesModule: Module<State, {}> = {
     },
     updatePreferredCities(
       state: State,
-      update: { city: CityInfo; selected: boolean }
+      payload: { city: CityInfo; selected: boolean }
     ) {
       const preferred: PreferredCities = {
         ...state.preferredCities.data
       };
-      if (!update.selected) {
-        delete preferred[update.city.geonameid];
+      if (!payload.selected) {
+        delete preferred[payload.city.geonameid];
       } else {
-        preferred[update.city.geonameid] = update.city;
+        preferred[payload.city.geonameid] = payload.city;
       }
       state.preferredCities.data = preferred;
     },
@@ -115,6 +118,15 @@ const citiesModule: Module<State, {}> = {
       }
       if (!state.preferredCities.withError.length)
         state.preferredCities.withError = null;
+    },
+    setPreferredLoading(
+      state: State,
+      payload: { geonameId: string; loading: boolean }
+    ) {
+      state.preferredCities.loading = {
+        ...state.preferredCities.loading,
+        [payload.geonameId]: payload.loading
+      };
     },
     setCancelRequest(state: State, cancelFn: any) {
       state.cancelRequest = cancelFn;
@@ -179,19 +191,27 @@ const citiesModule: Module<State, {}> = {
       ids: Array<string>
     ) {
       ids.forEach(geonameId => {
+        commit("setPreferredLoading", { geonameId, loading: true });
         citiesApi
           .getCity(geonameId)
           .then(city => {
             commit("updatePreferredCities", { city, selected: true });
             commit("removePreferredCitiesError", geonameId);
+            commit("setPreferredLoading", { geonameId, loading: false });
           })
           .catch(error => {
             commit("addPreferredCitiesError", geonameId);
+            commit("setPreferredLoading", { geonameId, loading: false });
           });
       });
     },
-    async getPreferredCities({ dispatch, state }: ActionContext<State, {}>) {
+    async getPreferredCities({
+      commit,
+      dispatch,
+      state
+    }: ActionContext<State, {}>) {
       const preferredCities = await citiesApi.getPreferredCities();
+      commit("setPreferredCities", preferredCities.data);
       dispatch("getCityInfo", preferredCities.data);
       return state.preferredCities;
     },

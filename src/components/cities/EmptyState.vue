@@ -23,7 +23,7 @@ export default Vue.extend({
   align-items: center;
   font-size: 1.2rem;
   font-weight: 600;
-  color: #009898;
+  color: $main-color;
   opacity: 0.8;
 
   .el-icon-search {
