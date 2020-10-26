@@ -1,6 +1,6 @@
 export interface State {
   citiesList: CitiesList;
-  preferredCities: PreferredCities;
+  preferredCities: PreferredCitiesList;
   cancelRequest: any;
 }
 
@@ -29,10 +29,18 @@ export type CityParams = {
   filter?: string;
 };
 
+export type PreferredCitiesList = {
+  data: PreferredCities;
+  withError: Array<string> | null;
+  loading: PreferredCitiesMap;
+};
+
 export type PreferredCities = {
   [geonameid: string]: CityInfo | null;
 };
 
-export type PreferredCitiesPatch = {
+export type PreferredCitiesMap = {
   [geonameid: string]: boolean;
 };
+
+export type PreferredCitiesPatch = PreferredCitiesMap;

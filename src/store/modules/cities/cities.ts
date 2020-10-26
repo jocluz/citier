@@ -26,7 +26,11 @@ const citiesModule: Module<State, {}> = {
       },
       filter: ""
     },
-    preferredCities: {},
+    preferredCities: {
+      data: {},
+      withError: null,
+      loading: {}
+    },
     cancelRequest: null
   },
 
@@ -47,7 +51,10 @@ const citiesModule: Module<State, {}> = {
       return state.citiesList.filter;
     },
     preferredCities(state: State) {
-      return state.preferredCities;
+      return state.preferredCities.data;
+    },
+    preferredCitiesWithError(state: State) {
+      return state.preferredCities.withError;
     }
   },
 
@@ -71,26 +78,43 @@ const citiesModule: Module<State, {}> = {
       state.citiesList.filter = "";
     },
     setPreferredCities(state: State, preferredCities: Array<string>) {
-      state.preferredCities = preferredCities.reduce((acc: {}, val: string) => {
-        acc[val] = {
-          geonameid: val
-        };
-        return acc;
-      }, {});
+      state.preferredCities.data = preferredCities.reduce(
+        (acc: {}, val: string) => {
+          acc[val] = {
+            geonameid: val
+          };
+          return acc;
+        },
+        {}
+      );
     },
     updatePreferredCities(
       state: State,
       update: { city: CityInfo; selected: boolean }
     ) {
       const preferred: PreferredCities = {
-        ...state.preferredCities
+        ...state.preferredCities.data
       };
       if (!update.selected) {
         delete preferred[update.city.geonameid];
       } else {
         preferred[update.city.geonameid] = update.city;
       }
-      state.preferredCities = preferred;
+      state.preferredCities.data = preferred;
+    },
+    addPreferredCitiesError(state: State, geonameid: string) {
+      if (!state.preferredCities.withError)
+        state.preferredCities.withError = [];
+      state.preferredCities.withError.push(geonameid);
+    },
+    removePreferredCitiesError(state: State, geonameid: string) {
+      if (!state.preferredCities.withError) return;
+      const index = state.preferredCities.withError.indexOf(geonameid);
+      if (index > -1) {
+        state.preferredCities.withError.splice(index, 1);
+      }
+      if (!state.preferredCities.withError.length)
+        state.preferredCities.withError = null;
     },
     setCancelRequest(state: State, cancelFn: any) {
       state.cancelRequest = cancelFn;
@@ -155,14 +179,24 @@ const citiesModule: Module<State, {}> = {
       ids: Array<string>
     ) {
       ids.forEach(geonameId => {
-        citiesApi.getCity(geonameId).then(city => {
-          commit("updatePreferredCities", { city, selected: true });
-        });
+        citiesApi
+          .getCity(geonameId)
+          .then(city => {
+            commit("updatePreferredCities", { city, selected: true });
+            commit("removePreferredCitiesError", geonameId);
+          })
+          .catch(error => {
+            commit("addPreferredCitiesError", geonameId);
+          });
       });
     },
     async getPreferredCities({ dispatch, state }: ActionContext<State, {}>) {
       const preferredCities = await citiesApi.getPreferredCities();
       dispatch("getCityInfo", preferredCities.data);
+      return state.preferredCities;
+    },
+    async reloadFailedPreferred({ dispatch, state }: ActionContext<State, {}>) {
+      dispatch("getCityInfo", state.preferredCities.withError);
       return state.preferredCities;
     },
     async savePreferredCities(

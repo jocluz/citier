@@ -58,7 +58,8 @@ export default Vue.extend({
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  padding: 10px;
+  padding: 10px 10px 0 10px;
+  box-shadow: 0 10px 6px -6px #7777770d;
 
   &__item {
     display: flex;
@@ -67,6 +68,10 @@ export default Vue.extend({
     padding: 0.5rem;
     border-radius: 4px;
     background: #edffb8;
+
+    .el-icon-delete {
+      cursor: pointer;
+    }
 
     .el-icon-delete,
     .el-icon-loading {

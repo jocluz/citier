@@ -12,6 +12,11 @@
 
     <el-card class="box-card search__list">
       <!-- PREFERRED CITIES -->
+      <i
+        v-if="preferredCitiesWithError"
+        class="el-icon-warning warning-icon"
+        @click="refetchPreferred"
+      ></i>
       <Preferred
         v-if="!loading"
         v-loading="loadingPreferred"
@@ -72,7 +77,12 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapGetters("cities", ["cities", "nextLink", "preferredCities"]),
+    ...mapGetters("cities", [
+      "cities",
+      "nextLink",
+      "preferredCities",
+      "preferredCitiesWithError"
+    ]),
     showEmptyState(): boolean {
       return !this.cities.length && !this.loading;
     },
@@ -88,7 +98,8 @@ export default Vue.extend({
     ...mapActions("cities", [
       "getCities",
       "getPreferredCities",
-      "savePreferredCities"
+      "savePreferredCities",
+      "reloadFailedPreferred"
     ]),
     ...mapMutations("cities", ["clearCities"]),
     async fetchCities(filter = "") {
@@ -166,6 +177,11 @@ export default Vue.extend({
           message: `Failed to save ${city.name} (${city.country}). Please try again.`,
           duration: 5000
         });
+      }
+    },
+    refetchPreferred(): void {
+      if (this.preferredCitiesWithError) {
+        this.reloadFailedPreferred();
       }
     },
     isSaving(city: CityInfo): boolean {
@@ -319,6 +335,15 @@ export default Vue.extend({
     bottom: 50px;
     left: 0;
     right: 0;
+  }
+
+  .warning-icon {
+    position: absolute;
+    right: 5px;
+    top: 10px;
+    font-size: 1.3rem;
+    color: #ff2929;
+    cursor: pointer;
   }
 
   ::v-deep .el-loading-spinner i {
