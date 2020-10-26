@@ -14,6 +14,8 @@
       <!-- PREFERRED CITIES -->
       <Preferred
         v-if="!loading"
+        v-loading="loadingPreferred"
+        element-loading-spinner="el-icon-loading"
         :loading="saving"
         :items="preferredCities"
         itemId="geonameid"
@@ -36,7 +38,7 @@
       <div
         class="search__loading"
         element-loading-spinner="el-icon-loading"
-        v-loading="loading"
+        v-loading="isLoadingData"
       ></div>
     </el-card>
   </div>
@@ -50,8 +52,7 @@ import { CityInfo } from "../../store/modules/cities/types";
 import Preferred from "./Preferred.vue";
 import SearchResults from "./SearchResults.vue";
 import EmptyState from "./EmptyState.vue";
-
-const MAX_RETRIES = 3;
+import { MAX_RETRIES, RETRY_TIMEOUT, SEARCH_DEBOUNCE_TIME } from "./model";
 
 export default Vue.extend({
   name: "Search",
@@ -63,9 +64,10 @@ export default Vue.extend({
   data() {
     return {
       loading: false,
-      loadingPreferredCities: false,
+      loadingPreferred: false,
       saving: {},
-      retries: MAX_RETRIES,
+      citiesRetry: MAX_RETRIES,
+      preferredRetry: MAX_RETRIES,
       search: ""
     };
   },
@@ -73,6 +75,9 @@ export default Vue.extend({
     ...mapGetters("cities", ["cities", "nextLink", "preferredCities"]),
     showEmptyState(): boolean {
       return !this.cities.length && !this.loading;
+    },
+    isLoadingData(): boolean {
+      return this.loading || this.loadingPreferred;
     }
   },
   created() {
@@ -90,36 +95,46 @@ export default Vue.extend({
       try {
         this.loading = true;
         const { canceled } = await this.getCities(filter);
-        this.retries = MAX_RETRIES;
+        this.citiesRetry = MAX_RETRIES;
         if (!canceled) {
           this.loading = false;
         }
       } catch (error) {
-        if (this.retries) {
-          this.retries--;
+        if (this.citiesRetry) {
+          this.citiesRetry--;
           setTimeout(() => {
             this.fetchCities(filter);
-          }, 1000);
+          }, RETRY_TIMEOUT);
         } else {
           this.loading = false;
           this.$message.error({
             type: "error",
-            message: error.response.data.message
+            message: `Failed to load cities: ${error.response.data.message}`
           });
         }
       }
     },
     async fetchPreferredCities() {
       try {
-        this.loadingPreferredCities = true;
-        await this.getPreferredCities();
-        this.loadingPreferredCities = false;
+        this.loadingPreferred = true;
+        const { canceled } = await this.getPreferredCities();
+        this.preferredRetry = MAX_RETRIES;
+        if (!canceled) {
+          this.loadingPreferred = false;
+        }
       } catch (error) {
-        this.loadingPreferredCities = false;
-        this.$message.error({
-          type: "error",
-          message: error.response.data.message
-        });
+        if (this.preferredRetry) {
+          this.preferredRetry--;
+          setTimeout(() => {
+            this.fetchPreferredCities();
+          }, RETRY_TIMEOUT);
+        } else {
+          this.loadingPreferred = false;
+          this.$message.error({
+            type: "error",
+            message: `Failed to load preferred cities: ${error.response.data.message}`
+          });
+        }
       }
     },
     loadMore(): void {
@@ -131,7 +146,7 @@ export default Vue.extend({
         this.clearCities();
         this.fetchCities(search);
       },
-      200,
+      SEARCH_DEBOUNCE_TIME,
       { leading: true }
     ),
     toggleCity(city: CityInfo): void {
