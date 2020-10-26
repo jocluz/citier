@@ -12,29 +12,13 @@
 
     <!-- CITIES LIST WITH LAZY LOADING -->
     <el-card class="box-card search__list">
-      <div class="search__list__preferred" v-if="!loading">
-        <div
-          v-for="item in preferredCities"
-          :key="item.geonameid"
-          class="search__list__preferred__item selected"
-          @click="saveCity(item, false)"
-          :class="{
-            saving: isSaving(item)
-          }"
-        >
-          <div class="search__list__item__info">
-            <div class="search__list__item__info__title">
-              {{ item.name }}
-            </div>
-            <div class="search__list__item__info__desc">
-              {{ item.subcountry }} - {{ item.country }}
-            </div>
-          </div>
-          <i
-            :class="`el-icon-${isSaving(item) ? 'loading' : 'delete-solid'}`"
-          ></i>
-        </div>
-      </div>
+      <Preferred
+        v-if="!loading"
+        :loading="saving"
+        :items="preferredCities"
+        itemId="geonameid"
+        @itemClicked="saveCity($event, false)"
+      />
 
       <infinite-scroll :items="cities" itemId="geonameid" @refetch="loadMore">
         <template v-slot:item="{ item }">
@@ -63,11 +47,7 @@
         </template>
       </infinite-scroll>
 
-      <div class="search__empty-state" v-if="showEmptyState">
-        <i class="el-icon-search"></i>
-
-        No results found
-      </div>
+      <EmptyState v-if="showEmptyState" />
 
       <div
         class="search__loading"
@@ -86,6 +66,8 @@ import InfiniteScroll from "../InfiniteScroll.vue";
 import debounce from "lodash.debounce";
 import TextHighlight from "vue-text-highlight";
 import { CityInfo } from "../../store/modules/cities/types";
+import Preferred from "./Preferred.vue";
+import EmptyState from "./EmptyState.vue";
 
 const MAX_RETRIES = 3;
 
@@ -93,7 +75,9 @@ export default Vue.extend({
   name: "Search",
   components: {
     InfiniteScroll,
-    TextHighlight
+    TextHighlight,
+    Preferred,
+    EmptyState
   },
   data() {
     return {
