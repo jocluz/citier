@@ -150,9 +150,19 @@ const citiesModule: Module<State, {}> = {
         throw error;
       }
     },
-    async getPreferredCities({ commit, state }: ActionContext<State, {}>) {
+    async getCityInfo(
+      { commit }: ActionContext<State, {}>,
+      ids: Array<string>
+    ) {
+      ids.forEach(geonameId => {
+        citiesApi.getCity(geonameId).then(city => {
+          commit("updatePreferredCities", { city, selected: true });
+        });
+      });
+    },
+    async getPreferredCities({ dispatch, state }: ActionContext<State, {}>) {
       const preferredCities = await citiesApi.getPreferredCities();
-      commit("setPreferredCities", preferredCities.data);
+      dispatch("getCityInfo", preferredCities.data);
       return state.preferredCities;
     },
     async savePreferredCities(

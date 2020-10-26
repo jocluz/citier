@@ -13,6 +13,15 @@ async function getCities(params: any, cancel?: any) {
   return get(req);
 }
 
+async function getCity(geonameId) {
+  const url = `/cities/${geonameId}`;
+  const req: RequestConfig = {
+    url
+  };
+
+  return get(req);
+}
+
 async function getPreferredCities() {
   const url = `/preferences/cities`;
   const req: RequestConfig = {
@@ -33,4 +42,4 @@ async function savePreferredCities(cities: PreferredCitiesPatch) {
   return patch(req);
 }
 
-export { getCities, getPreferredCities, savePreferredCities };
+export { getCities, getCity, getPreferredCities, savePreferredCities };
