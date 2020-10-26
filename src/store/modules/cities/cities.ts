@@ -1,6 +1,13 @@
 import { Module, ActionContext } from "vuex";
-import * as citiesService from "../../../api/cities.api";
-import { State, CitiesList, CityParams } from "./types";
+import * as citiesApi from "../../../api/cities.api";
+import {
+  State,
+  CitiesList,
+  CityParams,
+  PreferredCities,
+  PreferredCitiesPatch,
+  CityInfo
+} from "./types";
 
 let cancel: any = null;
 const CANCEL_MESSAGE = "canceled";
@@ -19,7 +26,8 @@ const citiesModule: Module<State, {}> = {
         last: ""
       },
       filter: ""
-    }
+    },
+    preferredCities: {}
   },
 
   getters: {
@@ -37,15 +45,21 @@ const citiesModule: Module<State, {}> = {
     },
     filter(state: State) {
       return state.citiesList.filter;
+    },
+    preferredCities(state: State) {
+      return state.preferredCities;
+    },
+    isCityPreferred: (state: State) => (geonameid: string) => {
+      return state.preferredCities[geonameid];
     }
   },
 
   mutations: {
-    setCities(state: State, payload: any) {
-      state.citiesList.data.push(...payload.data);
-      state.citiesList.total = payload.total;
-      state.citiesList.links = payload.links;
-      state.citiesList.filter = payload.filter || "";
+    setCities(state: State, citiesList: CitiesList) {
+      state.citiesList.data.push(...citiesList.data);
+      state.citiesList.total = citiesList.total;
+      state.citiesList.links = citiesList.links;
+      state.citiesList.filter = citiesList.filter || "";
     },
     clearCities(state: State) {
       state.citiesList.data.splice(0, state.citiesList.data.length);
@@ -57,6 +71,28 @@ const citiesModule: Module<State, {}> = {
         last: ""
       };
       state.citiesList.filter = "";
+    },
+    setPreferredCities(state: State, preferredCities: Array<string>) {
+      state.preferredCities = preferredCities.reduce((acc: {}, val: string) => {
+        acc[val] = {
+          geonameid: val
+        };
+        return acc;
+      }, {});
+    },
+    updatePreferredCities(
+      state: State,
+      update: { city: CityInfo; selected: boolean }
+    ) {
+      const preferred: PreferredCities = {
+        ...state.preferredCities
+      };
+      if (!update.selected) {
+        delete preferred[update.city.geonameid];
+      } else {
+        preferred[update.city.geonameid] = update.city;
+      }
+      state.preferredCities = preferred;
     }
   },
 
@@ -78,7 +114,7 @@ const citiesModule: Module<State, {}> = {
         if (getters.nextLink) {
           const params: CityParams = parseParams(getters.nextLink);
           if (filter) params.filter = filter;
-          items = await citiesService.getCities(params, lastCall);
+          items = await citiesApi.getCities(params, lastCall);
           commit("setCities", items);
           cancel = null;
           return items;
@@ -87,7 +123,7 @@ const citiesModule: Module<State, {}> = {
         if (getters.prevLink) {
           const params: CityParams = parseParams(getters.lastLink);
           if (filter) params.filter = filter;
-          items = await citiesService.getCities(params, lastCall);
+          items = await citiesApi.getCities(params, lastCall);
           commit("setCities", items);
           cancel = null;
           return items;
@@ -95,7 +131,7 @@ const citiesModule: Module<State, {}> = {
 
         const params: CityParams = { offset: "0", limit: "30" };
         if (filter) params.filter = filter;
-        items = await citiesService.getCities(params, lastCall);
+        items = await citiesApi.getCities(params, lastCall);
         commit("setCities", items);
         cancel = null;
 
@@ -108,6 +144,25 @@ const citiesModule: Module<State, {}> = {
 
         throw error;
       }
+    },
+    async getPreferredCities({ commit, state }: ActionContext<State, {}>) {
+      const preferredCities = await citiesApi.getPreferredCities();
+      commit("setPreferredCities", preferredCities.data);
+      return state.preferredCities;
+    },
+    async savePreferredCities(
+      { commit, state }: ActionContext<State, {}>,
+      preferred: { city: CityInfo; selected: boolean }
+    ) {
+      const city = preferred.city;
+      const selected = preferred.selected;
+      const preferredPatch: PreferredCitiesPatch = {
+        [city.geonameid]: selected
+      };
+
+      await citiesApi.savePreferredCities(preferredPatch);
+      commit("updatePreferredCities", { city, selected });
+      return state.preferredCities;
     }
   }
 };

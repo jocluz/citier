@@ -7,27 +7,65 @@
       v-model="search"
       placeholder="Search a city"
       @input="filterCities"
-    ></el-input>
+    >
+    </el-input>
 
     <!-- CITIES LIST WITH LAZY LOADING -->
     <el-card class="box-card search__list">
-      <infinite-scroll :items="cities" @refetch="loadMore">
+      <div class="search__list__preferred" v-if="!loading">
+        <div
+          v-for="item in preferredCities"
+          :key="item.geonameid"
+          class="search__list__preferred__item selected"
+          @click="saveCity(item, false)"
+          :class="{
+            saving: isSaving(item)
+          }"
+        >
+          <div class="search__list__item__info">
+            <div class="search__list__item__info__title">
+              {{ item.name }}
+            </div>
+            <div class="search__list__item__info__desc">
+              {{ item.subcountry }} - {{ item.country }}
+            </div>
+          </div>
+          <i
+            :class="`el-icon-${isSaving(item) ? 'loading' : 'delete-solid'}`"
+          ></i>
+        </div>
+      </div>
+
+      <infinite-scroll :items="cities" itemId="geonameid" @refetch="loadMore">
         <template v-slot:item="{ item }">
-          <div class="search__list__item">
-            <div class="search__list__item__title">
-              <TextHighlight :queries="[search]">{{ item.name }}</TextHighlight>
+          <div
+            class="search__list__item"
+            @click="saveCity(item, true)"
+            v-if="!isCityPreferred(item.geonameid)"
+            :class="{
+              saving: isSaving(item)
+            }"
+          >
+            <div class="search__list__item__info">
+              <div class="search__list__item__info__title">
+                <TextHighlight :queries="[search]">{{
+                  item.name
+                }}</TextHighlight>
+              </div>
+              <div class="search__list__item__info__desc">
+                <TextHighlight :queries="[search]">
+                  {{ item.subcountry }} - {{ item.country }}
+                </TextHighlight>
+              </div>
             </div>
-            <div class="search__list__item__desc">
-              <TextHighlight :queries="[search]">
-                {{ item.subcountry }} - {{ item.country }}
-              </TextHighlight>
-            </div>
+            <i :class="`el-icon-${isSaving(item) ? 'loading' : 'check'}`"></i>
           </div>
         </template>
       </infinite-scroll>
 
       <div class="search__empty-state" v-if="showEmptyState">
-        <i class="fas fa-search"></i>
+        <i class="el-icon-search"></i>
+
         No results found
       </div>
 
@@ -47,6 +85,7 @@ import { mapActions, mapGetters, mapMutations } from "vuex";
 import InfiniteScroll from "../InfiniteScroll.vue";
 import debounce from "lodash.debounce";
 import TextHighlight from "vue-text-highlight";
+import { CityInfo } from "../../store/modules/cities/types";
 
 const MAX_RETRIES = 3;
 
@@ -59,21 +98,33 @@ export default Vue.extend({
   data() {
     return {
       loading: false,
+      loadingPreferredCities: false,
+      saving: {},
       retries: MAX_RETRIES,
       search: ""
     };
   },
   computed: {
-    ...mapGetters("cities", ["cities", "nextLink"]),
+    ...mapGetters("cities", [
+      "cities",
+      "nextLink",
+      "preferredCities",
+      "isCityPreferred"
+    ]),
     showEmptyState(): boolean {
       return !this.cities.length && !this.loading;
     }
   },
   created() {
+    this.fetchPreferredCities();
     this.fetchCities();
   },
   methods: {
-    ...mapActions("cities", ["getCities"]),
+    ...mapActions("cities", [
+      "getCities",
+      "getPreferredCities",
+      "savePreferredCities"
+    ]),
     ...mapMutations("cities", ["clearCities"]),
     async fetchCities(filter = "") {
       try {
@@ -82,13 +133,13 @@ export default Vue.extend({
         this.retries = MAX_RETRIES;
         this.loading = false;
       } catch (error) {
-        this.loading = false;
         if (this.retries) {
           this.retries--;
           setTimeout(() => {
             this.fetchCities(filter);
           }, 1000);
         } else {
+          this.loading = false;
           this.$message.error({
             type: "error",
             message: error.response.data.message
@@ -96,14 +147,45 @@ export default Vue.extend({
         }
       }
     },
-    loadMore() {
+    async fetchPreferredCities() {
+      try {
+        this.loadingPreferredCities = true;
+        await this.getPreferredCities();
+        this.loadingPreferredCities = false;
+      } catch (error) {
+        this.loadingPreferredCities = false;
+        this.$message.error({
+          type: "error",
+          message: error.response.data.message
+        });
+      }
+    },
+    loadMore(): void {
       if (!this.nextLink || this.loading) return;
       this.fetchCities(this.search);
     },
-    filterCities: debounce(function(this: any, search: string) {
+    filterCities: debounce(function(this: any, search: string): void {
       this.clearCities();
       this.fetchCities(search);
-    }, 500)
+    }, 500),
+    async saveCity(city: CityInfo, selected: boolean) {
+      const geonameid = city.geonameid;
+      try {
+        this.$set(this.saving, geonameid, true);
+        await this.savePreferredCities({ city, selected });
+        this.saving[geonameid] = false;
+      } catch (error) {
+        this.saving[geonameid] = false;
+        this.$message.error({
+          type: "error",
+          message: `Failed to save ${city.name} (${city.country}). Please try again.`,
+          duration: 5000
+        });
+      }
+    },
+    isSaving(city: CityInfo): boolean {
+      return this.saving[city.geonameid];
+    }
   }
 });
 </script>
@@ -112,33 +194,117 @@ export default Vue.extend({
 .search {
   display: flex;
   flex-direction: column;
+  max-width: 500px;
+
+  &__input {
+    margin-bottom: 10px;
+    border-radius: 4px;
+    font-size: 1.2rem;
+    box-shadow: 0 1px 12px 0 rgba(0, 0, 0, 0.1);
+  }
 
   &__list {
-    min-width: 400px;
     overflow-y: auto;
     flex-grow: 1;
 
-    &__item {
+    &__item,
+    &__preferred__item {
+      display: flex;
+      align-items: center;
       cursor: pointer;
       padding: 1rem;
       -webkit-box-shadow: 0 10px 6px -6px #7777770d;
       -moz-box-shadow: 0 10px 6px -6px #7777770d;
       box-shadow: 0 10px 6px -6px #7777770d;
 
-      &__title {
-        font-size: 1.4rem;
-        font-weight: 400;
-        color: #009898;
-      }
+      &__info {
+        flex-grow: 1;
+        &__title {
+          font-size: 1.4rem;
+          font-weight: 400;
+          color: #009898;
+        }
 
-      &__desc {
-        color: #98b3b3;
+        &__desc {
+          color: #98b3b3;
+        }
       }
 
       &:hover {
-        background-color: #b5ab621a;
+        background-color: #edffb8;
         -webkit-transition: all 0.5s linear;
         transition: all 0.5s linear;
+
+        .el-icon-check {
+          color: #009898;
+          -webkit-transition: all 0.5s linear;
+          transition: all 0.5s linear;
+        }
+      }
+
+      &.selected {
+        background: #edffb8;
+
+        .el-icon-delete-solid,
+        .el-icon-loading {
+          align-self: flex-start;
+          color: #009898;
+          font-size: 1rem;
+        }
+      }
+
+      &.saving {
+        cursor: not-allowed;
+        pointer-events: none;
+        opacity: 0.5;
+      }
+
+      .el-icon-loading {
+        color: #009898;
+      }
+
+      .el-icon-check {
+        color: transparent;
+      }
+
+      .el-icon-check,
+      .el-icon-loading {
+        font-weight: 700;
+        font-size: 1.5rem;
+      }
+    }
+
+    &__item {
+      &.selected {
+        display: none;
+      }
+    }
+
+    &__preferred {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    &__preferred__item {
+      margin: 0 10px 10px 0;
+      padding: 0.5rem;
+      border-radius: 4px;
+
+      .search__list__item__info {
+        flex-grow: 1;
+        &__title {
+          font-size: 1rem;
+          font-weight: 400;
+          color: #009898;
+        }
+
+        &__desc {
+          font-size: 0.8rem;
+          color: #98b3b3;
+        }
       }
     }
   }
@@ -152,10 +318,14 @@ export default Vue.extend({
     font-size: 1.2rem;
     font-weight: 600;
     color: #009898;
+    opacity: 0.8;
 
-    .fa-search {
+    .el-icon-search {
       display: flex;
+      font-weight: 800;
+      font-size: 2rem;
       padding-bottom: 10px;
+      opacity: 0.8;
     }
   }
 
@@ -190,6 +360,10 @@ export default Vue.extend({
     background: #c0c4cc38;
     font-weight: 700;
     color: inherit;
+  }
+
+  ::v-deep .el-input__inner {
+    border: 1px solid #ebeef5;
   }
 }
 </style>

@@ -1,5 +1,6 @@
 export interface State {
   citiesList: CitiesList;
+  preferredCities: PreferredCities;
 }
 
 export type CitiesList = {
@@ -25,4 +26,12 @@ export type CityParams = {
   offset?: string;
   limit?: string;
   filter?: string;
+};
+
+export type PreferredCities = {
+  [geonameid: string]: CityInfo | null;
+};
+
+export type PreferredCitiesPatch = {
+  [geonameid: string]: boolean;
 };
