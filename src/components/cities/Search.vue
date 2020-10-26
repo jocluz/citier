@@ -10,8 +10,8 @@
     >
     </el-input>
 
-    <!-- CITIES LIST WITH LAZY LOADING -->
     <el-card class="box-card search__list">
+      <!-- PREFERRED CITIES -->
       <Preferred
         v-if="!loading"
         :loading="saving"
@@ -20,39 +20,22 @@
         @itemClicked="saveCity($event, false)"
       />
 
-      <infinite-scroll :items="cities" itemId="geonameid" @refetch="loadMore">
-        <template v-slot:item="{ item }">
-          <div
-            class="search__list__item"
-            @click="saveCity(item, true)"
-            v-if="!isCityPreferred(item.geonameid)"
-            :class="{
-              saving: isSaving(item)
-            }"
-          >
-            <div class="search__list__item__info">
-              <div class="search__list__item__info__title">
-                <TextHighlight :queries="[search]">{{
-                  item.name
-                }}</TextHighlight>
-              </div>
-              <div class="search__list__item__info__desc">
-                <TextHighlight :queries="[search]">
-                  {{ item.subcountry }} - {{ item.country }}
-                </TextHighlight>
-              </div>
-            </div>
-            <i :class="`el-icon-${isSaving(item) ? 'loading' : 'check'}`"></i>
-          </div>
-        </template>
-      </infinite-scroll>
+      <!-- CITIES LIST WITH LAZY LOADING -->
+      <SearchResults
+        :loading="saving"
+        :items="cities"
+        :selectedItems="preferredCities"
+        :highlight="search"
+        itemId="geonameid"
+        @loadMore="loadMore"
+        @itemClicked="toggleCity($event)"
+      />
 
       <EmptyState v-if="showEmptyState" />
 
       <div
         class="search__loading"
         element-loading-spinner="el-icon-loading"
-        v-if="loading"
         v-loading="loading"
       ></div>
     </el-card>
@@ -61,12 +44,11 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { mapActions, mapGetters, mapMutations } from "vuex";
-import InfiniteScroll from "../InfiniteScroll.vue";
 import debounce from "lodash.debounce";
-import TextHighlight from "vue-text-highlight";
+import { mapActions, mapGetters, mapMutations } from "vuex";
 import { CityInfo } from "../../store/modules/cities/types";
 import Preferred from "./Preferred.vue";
+import SearchResults from "./SearchResults.vue";
 import EmptyState from "./EmptyState.vue";
 
 const MAX_RETRIES = 3;
@@ -74,9 +56,8 @@ const MAX_RETRIES = 3;
 export default Vue.extend({
   name: "Search",
   components: {
-    InfiniteScroll,
-    TextHighlight,
     Preferred,
+    SearchResults,
     EmptyState
   },
   data() {
@@ -89,12 +70,7 @@ export default Vue.extend({
     };
   },
   computed: {
-    ...mapGetters("cities", [
-      "cities",
-      "nextLink",
-      "preferredCities",
-      "isCityPreferred"
-    ]),
+    ...mapGetters("cities", ["cities", "nextLink", "preferredCities"]),
     showEmptyState(): boolean {
       return !this.cities.length && !this.loading;
     }
@@ -113,9 +89,11 @@ export default Vue.extend({
     async fetchCities(filter = "") {
       try {
         this.loading = true;
-        await this.getCities(filter);
+        const { canceled } = await this.getCities(filter);
         this.retries = MAX_RETRIES;
-        this.loading = false;
+        if (!canceled) {
+          this.loading = false;
+        }
       } catch (error) {
         if (this.retries) {
           this.retries--;
@@ -148,10 +126,18 @@ export default Vue.extend({
       if (!this.nextLink || this.loading) return;
       this.fetchCities(this.search);
     },
-    filterCities: debounce(function(this: any, search: string): void {
-      this.clearCities();
-      this.fetchCities(search);
-    }, 500),
+    filterCities: debounce(
+      function(this: any, search: string): void {
+        this.clearCities();
+        this.fetchCities(search);
+      },
+      200,
+      { leading: true }
+    ),
+    toggleCity(city: CityInfo): void {
+      const selected = this.preferredCities[city.geonameid] ? false : true;
+      this.saveCity(city, selected);
+    },
     async saveCity(city: CityInfo, selected: boolean) {
       const geonameid = city.geonameid;
       try {

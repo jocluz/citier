@@ -9,7 +9,6 @@ import {
   CityInfo
 } from "./types";
 
-let cancel: any = null;
 const CANCEL_MESSAGE = "canceled";
 
 const citiesModule: Module<State, {}> = {
@@ -27,7 +26,8 @@ const citiesModule: Module<State, {}> = {
       },
       filter: ""
     },
-    preferredCities: {}
+    preferredCities: {},
+    cancelRequest: null
   },
 
   getters: {
@@ -48,9 +48,6 @@ const citiesModule: Module<State, {}> = {
     },
     preferredCities(state: State) {
       return state.preferredCities;
-    },
-    isCityPreferred: (state: State) => (geonameid: string) => {
-      return state.preferredCities[geonameid];
     }
   },
 
@@ -63,6 +60,7 @@ const citiesModule: Module<State, {}> = {
     },
     clearCities(state: State) {
       state.citiesList.data.splice(0, state.citiesList.data.length);
+      state.citiesList.data = [];
       state.citiesList.total = -1;
       state.citiesList.links = {
         first: "",
@@ -93,20 +91,23 @@ const citiesModule: Module<State, {}> = {
         preferred[update.city.geonameid] = update.city;
       }
       state.preferredCities = preferred;
+    },
+    setCancelRequest(state: State, cancelFn: any) {
+      state.cancelRequest = cancelFn;
     }
   },
 
   actions: {
     async getCities(
-      { commit, getters }: ActionContext<{}, {}>,
+      { commit, getters, state }: ActionContext<State, {}>,
       filter: string
     ) {
-      if (cancel) {
-        await cancel(CANCEL_MESSAGE);
+      if (state.cancelRequest) {
+        await state.cancelRequest(CANCEL_MESSAGE);
       }
 
       const lastCall = (cancelFn: Function) => {
-        cancel = cancelFn;
+        commit("setCancelRequest", cancelFn);
       };
 
       try {
@@ -115,8 +116,10 @@ const citiesModule: Module<State, {}> = {
           const params: CityParams = parseParams(getters.nextLink);
           if (filter) params.filter = filter;
           items = await citiesApi.getCities(params, lastCall);
-          commit("setCities", items);
-          cancel = null;
+          commit("setCancelRequest", null);
+          if (!state.cancelRequest) {
+            commit("setCities", items);
+          }
           return items;
         }
 
@@ -124,22 +127,24 @@ const citiesModule: Module<State, {}> = {
           const params: CityParams = parseParams(getters.lastLink);
           if (filter) params.filter = filter;
           items = await citiesApi.getCities(params, lastCall);
-          commit("setCities", items);
-          cancel = null;
+          commit("setCancelRequest", null);
+          if (!state.cancelRequest) {
+            commit("setCities", items);
+          }
           return items;
         }
 
         const params: CityParams = { offset: "0", limit: "30" };
         if (filter) params.filter = filter;
         items = await citiesApi.getCities(params, lastCall);
-        commit("setCities", items);
-        cancel = null;
-
+        commit("setCancelRequest", null);
+        if (!state.cancelRequest) {
+          commit("setCities", items);
+        }
         return items;
       } catch (error) {
-        cancel = null;
         if (error.message === CANCEL_MESSAGE) {
-          return;
+          return { canceled: true };
         }
 
         throw error;

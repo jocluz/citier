@@ -37,7 +37,7 @@ export default Vue.extend({
     },
     iconClass: {
       type: String,
-      default: "delete-solid"
+      default: "delete"
     },
     loading: {
       type: Object,
@@ -68,16 +68,19 @@ export default Vue.extend({
     border-radius: 4px;
     background: #edffb8;
 
-    .el-icon-delete-solid,
+    .el-icon-delete,
     .el-icon-loading {
       align-self: flex-start;
       color: #009898;
-      font-size: 1rem;
+      font-size: 0.9rem;
       font-weight: 700;
+      padding-top: 3px;
     }
 
     .info {
+      margin-right: 10px;
       flex-grow: 1;
+
       &__title {
         font-size: 1rem;
         font-weight: 400;
@@ -88,12 +91,12 @@ export default Vue.extend({
         font-size: 0.8rem;
         color: #98b3b3;
       }
+    }
 
-      &.saving {
-        cursor: not-allowed;
-        pointer-events: none;
-        opacity: 0.5;
-      }
+    &.saving {
+      cursor: not-allowed;
+      pointer-events: none;
+      opacity: 0.5;
     }
   }
 }

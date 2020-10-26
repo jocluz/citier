@@ -1,6 +1,7 @@
 export interface State {
   citiesList: CitiesList;
   preferredCities: PreferredCities;
+  cancelRequest: any;
 }
 
 export type CitiesList = {
