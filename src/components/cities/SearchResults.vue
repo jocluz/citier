@@ -128,8 +128,8 @@ export default Vue.extend({
     showSpinner(item): boolean {
       return this.saving[item.geonameid];
     },
-    isSelected(item) {
-      return this.preferredCities && this.preferredCities[item.geonameid];
+    isSelected(item): boolean {
+      return !!(this.preferredCities && this.preferredCities[item.geonameid]);
     }
   }
 });
@@ -152,6 +152,7 @@ $text-highlight-color: #c0c4cc38;
     -webkit-box-shadow: $main-shadow;
     -moz-box-shadow: $main-shadow;
     box-shadow: $main-shadow;
+    background-color: transparent;
 
     .info {
       flex-grow: 1;
@@ -166,15 +167,14 @@ $text-highlight-color: #c0c4cc38;
       }
     }
 
-    &:hover {
-      background-color: $secondary-color;
-      -webkit-transition: all 0.5s linear;
-      transition: all 0.5s linear;
-
-      .el-icon-check {
-        color: $main-color;
+    @include md {
+      &:hover {
+        background-color: $secondary-color;
         -webkit-transition: all 0.5s linear;
         transition: all 0.5s linear;
+        .el-icon-check {
+          color: $main-color;
+        }
       }
     }
 
@@ -187,8 +187,6 @@ $text-highlight-color: #c0c4cc38;
     &.selected {
       .el-icon-check {
         color: $main-color;
-        -webkit-transition: all 0.5s linear;
-        transition: all 0.5s linear;
       }
     }
 

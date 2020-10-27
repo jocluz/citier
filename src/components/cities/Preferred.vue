@@ -212,6 +212,14 @@ export default Vue.extend({
   -moz-box-shadow: $main-shadow;
   box-shadow: $main-shadow;
 
+  max-height: 200px;
+  overflow-y: auto;
+
+  @include md {
+    max-height: unset;
+    overflow: hidden;
+  }
+
   &__item {
     display: flex;
     align-items: center;
@@ -280,8 +288,6 @@ export default Vue.extend({
 
     &.error {
       background: $error-color-light;
-      -webkit-transition: all 0.5s linear;
-      transition: all 0.5s linear;
       cursor: pointer;
       .el-icon-warning {
         padding: 10px;

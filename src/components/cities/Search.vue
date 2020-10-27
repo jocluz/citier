@@ -71,7 +71,7 @@ export default Vue.extend({
 .search {
   display: flex;
   flex-direction: column;
-  max-width: 500px;
+  flex-grow: 1;
 
   .results__card {
     flex-grow: 1;

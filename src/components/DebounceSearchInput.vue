@@ -58,5 +58,13 @@ $input-border-color: #ebeef5;
 }
 ::v-deep .el-input__inner {
   border: 1px solid $input-border-color;
+
+  &:focus,
+  &:hover {
+    border-color: $main-color;
+  }
+}
+::v-deep .el-input__suffix {
+  color: $main-color;
 }
 </style>
