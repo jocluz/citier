@@ -40,7 +40,7 @@ export default Vue.extend({
 });
 </script>
 
-<style scoped lang="scss">
+<style lang="scss">
 .empty-state {
   $empty-state-text-color: #c2c2c2;
   display: flex;
