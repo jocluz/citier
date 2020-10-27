@@ -5,8 +5,11 @@
       suffix-icon="el-icon-search"
       class="search__input"
       v-model="search"
+      clearable
+      autofocus
       placeholder="Search a city"
       @input="filterCities"
+      @change="filterCities(search)"
     >
     </el-input>
 
@@ -14,12 +17,24 @@
       <div>
         <!-- PREFERRED CITIES -->
         <div class="section-header">
-          <div>Your favourites cities</div>
-          <i
-            v-if="preferredCitiesWithError"
-            class="el-icon-refresh refresh-icon"
-            @click="refetchPreferred"
-          ></i>
+          <div class="section-header__title">Your favorites cities</div>
+          <div v-if="!loadingPreferred">
+            <el-link
+              v-show="preferredCitiesWithError"
+              class="refresh-preferred"
+              type="danger"
+              @click="refetchPreferred"
+            >
+              Reload failed
+            </el-link>
+            <el-link
+              v-show="hasPreferredCities"
+              type="primary"
+              @click="resetPreferred"
+            >
+              Clear
+            </el-link>
+          </div>
         </div>
 
         <Preferred
@@ -33,15 +48,31 @@
           @itemClicked="saveCity($event, false)"
           @errorClicked="refetchPreferredCity"
         />
+
+        <EmptyState
+          :icon="
+            !preferredCities ? 'el-icon-warning' : 'el-icon-location-outline'
+          "
+          :message="
+            !preferredCities
+              ? 'Failed to load.'
+              : `You don't have any favourite city`
+          "
+          :show-refresh="!preferredCities"
+          @refresh-clicked="fetchPreferredCities"
+          v-if="showPreferredEmptyState"
+        />
       </div>
 
-      <div>
+      <div class="search__results">
         <!-- CITIES LIST WITH LAZY LOADING -->
         <div class="section-header">
           <div>Search results</div>
+          <div class="search-info">{{ searchInformation }}</div>
         </div>
 
         <SearchResults
+          v-if="hasCities"
           :loading="saving"
           :items="cities"
           :selectedItems="preferredCities"
@@ -51,7 +82,13 @@
           @itemClicked="toggleCity($event)"
         />
 
-        <EmptyState v-if="showEmptyState" />
+        <EmptyState
+          :icon="!cities ? 'el-icon-warning' : 'el-icon-search'"
+          :message="!cities ? 'Failed to load.' : 'No results found'"
+          :show-refresh="!cities"
+          @refresh-clicked="filterCities(search)"
+          v-if="showSearchEmptyState"
+        />
 
         <div
           class="search__loading"
@@ -96,10 +133,20 @@ export default Vue.extend({
       "nextLink",
       "preferredCities",
       "preferredCitiesWithError",
-      "preferredCitiesLoading"
+      "preferredCitiesLoading",
+      "searchInformation"
     ]),
-    showEmptyState(): boolean {
-      return !this.cities.length && !this.loading;
+    showSearchEmptyState(): boolean {
+      return (!this.cities || !this.cities.length) && !this.loading;
+    },
+    showPreferredEmptyState(): boolean {
+      return !this.hasPreferredCities && !this.loadingPreferred;
+    },
+    hasPreferredCities(): boolean {
+      return this.preferredCities && !!Object.keys(this.preferredCities).length;
+    },
+    hasCities(): boolean {
+      return this.cities && this.cities.length;
     }
   },
   created() {
@@ -111,6 +158,7 @@ export default Vue.extend({
       "getCities",
       "getPreferredCities",
       "savePreferredCities",
+      "resetPreferredCities",
       "reloadFailedPreferred",
       "getCityInfo"
     ]),
@@ -133,7 +181,7 @@ export default Vue.extend({
           this.loading = false;
           this.$message.error({
             type: "error",
-            message: `Failed to load cities: ${error.response.data.message}`
+            message: `Failed to load cities. Please try again.`
           });
         }
       }
@@ -156,7 +204,7 @@ export default Vue.extend({
           this.loadingPreferred = false;
           this.$message.error({
             type: "error",
-            message: `Failed to load preferred cities: ${error.response.data.message}`
+            message: `Failed to load preferred cities. Please try again.`
           });
         }
       }
@@ -174,14 +222,17 @@ export default Vue.extend({
       { leading: true }
     ),
     toggleCity(city: CityInfo): void {
-      const selected = this.preferredCities[city.geonameid] ? false : true;
+      const selected =
+        this.preferredCities && this.preferredCities[city.geonameid]
+          ? false
+          : true;
       this.saveCity(city, selected);
     },
     async saveCity(city: CityInfo, selected: boolean) {
       const geonameid = city.geonameid;
       try {
         this.$set(this.saving, geonameid, true);
-        await this.savePreferredCities({ city, selected });
+        await this.savePreferredCities([{ city, selected }]);
         this.saving[geonameid] = false;
       } catch (error) {
         this.saving[geonameid] = false;
@@ -194,12 +245,35 @@ export default Vue.extend({
     },
     refetchPreferred(): void {
       if (this.preferredCitiesWithError) {
-        this.reloadFailedPreferred();
+        this.reloadFailedPreferred().catch(() => {
+          this.$message.error({
+            type: "error",
+            message: `Failed to reload. Please try again.`
+          });
+        });
       }
     },
     refetchPreferredCity(city: CityInfo): void {
       if (!city) return;
-      this.getCityInfo([city.geonameid]);
+      this.getCityInfo([city.geonameid]).catch(() => {
+        this.$message.error({
+          type: "error",
+          message: `Failed to load ${city.name} (${city.country}) information. Please try again.`
+        });
+      });
+    },
+    async resetPreferred() {
+      try {
+        this.loadingPreferred = true;
+        await this.resetPreferredCities();
+        this.loadingPreferred = false;
+      } catch (error) {
+        this.loadingPreferred = false;
+        this.$message.error({
+          type: "error",
+          message: `Failed to clear your favourite cities. Please try again.`
+        });
+      }
     },
     isSaving(city: CityInfo): boolean {
       return this.saving[city.geonameid];
@@ -225,15 +299,34 @@ export default Vue.extend({
   }
 
   &__list {
-    overflow-y: auto;
+    display: flex;
     flex-grow: 1;
 
     .section-header {
       display: flex;
+      align-items: center;
       background: $secondary-color;
       padding: 5px 10px;
       color: $main-color;
       box-shadow: $main-shadow;
+
+      .el-link {
+        margin: 0 10px;
+        padding: 0;
+      }
+
+      .refresh-preferred {
+        color: $error-color;
+      }
+
+      .search-info {
+        font-size: 0.8rem;
+        padding-left: 10px;
+      }
+
+      &__title {
+        flex-grow: 1;
+      }
     }
 
     &__item,
@@ -327,6 +420,13 @@ export default Vue.extend({
     }
   }
 
+  &__results {
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+
   &__empty-state {
     display: flex;
     justify-content: center;
@@ -347,12 +447,12 @@ export default Vue.extend({
     }
   }
 
-  &__preferred__loading {
+  .preferred.el-loading-parent--relative {
     min-height: 50px;
   }
 
   &__loading {
-    position: absolute !important;
+    position: sticky !important;
     bottom: 50px;
     left: 0;
     right: 0;
@@ -387,6 +487,10 @@ export default Vue.extend({
     position: relative;
     min-height: 200px;
     padding: 0;
+
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
   }
 
   ::v-deep .text__highlight {

@@ -1,8 +1,18 @@
 <template functional>
   <div class="empty-state">
-    <i class="el-icon-search"></i>
+    <i :class="`${props.icon}`"></i>
 
-    No results found
+    {{ props.message }}
+
+    <el-link
+      type="primary"
+      v-if="props.showRefresh"
+      @click="
+        listeners['refresh-clicked'] ? listeners['refresh-clicked']() : null
+      "
+    >
+      Refresh
+    </el-link>
   </div>
 </template>
 
@@ -10,25 +20,41 @@
 import Vue from "vue";
 
 export default Vue.extend({
-  name: "EmptyState"
+  name: "EmptyState",
+  props: {
+    icon: {
+      type: String,
+      required: false,
+      default: "el-icon-search"
+    },
+    message: {
+      type: String,
+      required: false,
+      default: "No results found"
+    },
+    showRefresh: {
+      type: Boolean,
+      required: false
+    }
+  }
 });
 </script>
 
 <style scoped lang="scss">
 .empty-state {
+  $empty-state-text-color: #c2c2c2;
   display: flex;
   justify-content: center;
-  padding: 50px;
+  padding: 20px;
   flex-direction: column;
   align-items: center;
   font-size: 1.2rem;
   font-weight: 600;
-  color: $main-color;
+  color: $empty-state-text-color;
   opacity: 0.8;
 
-  .el-icon-search {
+  [class^="el-icon"] {
     display: flex;
-    font-weight: 800;
     font-size: 2rem;
     padding-bottom: 10px;
     opacity: 0.8;

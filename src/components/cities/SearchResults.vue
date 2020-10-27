@@ -11,12 +11,12 @@
       >
         <div class="info">
           <div class="info__title">
-            <TextHighlight :queries="[highlight]">{{
+            <TextHighlight :queries="[highlight, highlight.trim()]">{{
               item.name
             }}</TextHighlight>
           </div>
           <div class="info__desc">
-            <TextHighlight :queries="[highlight]">
+            <TextHighlight :queries="[highlight, highlight.trim()]">
               {{ item.subcountry }} - {{ item.country }}
             </TextHighlight>
           </div>
@@ -45,8 +45,7 @@ export default Vue.extend({
       required: true
     },
     selectedItems: {
-      type: Object,
-      required: true
+      type: Object
     },
     itemId: {
       type: String,
@@ -74,7 +73,7 @@ export default Vue.extend({
       return this.loading[item[this.itemId]];
     },
     isSelected(item) {
-      return this.selectedItems[item[this.itemId]];
+      return this.selectedItems && this.selectedItems[item[this.itemId]];
     }
   }
 });

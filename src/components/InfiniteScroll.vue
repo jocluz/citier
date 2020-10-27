@@ -44,6 +44,11 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .infinite-scroll {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+
   &__observe-visibility {
     min-height: 5px;
   }

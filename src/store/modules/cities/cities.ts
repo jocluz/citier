@@ -6,7 +6,8 @@ import {
   CityParams,
   PreferredCities,
   PreferredCitiesPatch,
-  CityInfo
+  CityInfo,
+  PreferredCitiesMap
 } from "./types";
 
 const CANCEL_MESSAGE = "canceled";
@@ -16,7 +17,7 @@ const citiesModule: Module<State, {}> = {
 
   state: {
     citiesList: {
-      data: [],
+      data: null,
       total: -1,
       links: {
         first: "",
@@ -27,7 +28,7 @@ const citiesModule: Module<State, {}> = {
       filter: ""
     },
     preferredCities: {
-      data: {},
+      data: null,
       withError: null,
       loading: {}
     },
@@ -35,42 +36,51 @@ const citiesModule: Module<State, {}> = {
   },
 
   getters: {
-    cities(state: State) {
+    cities(state: State): Array<CityInfo> | null {
       return state.citiesList.data;
     },
-    nextLink(state: State) {
+    nextLink(state: State): string | undefined {
       return state.citiesList.links.next;
     },
-    prevLink(state: State) {
+    prevLink(state: State): string | undefined {
       return state.citiesList.links.prev;
     },
-    lastLink(state: State) {
+    lastLink(state: State): string | undefined {
       return state.citiesList.links.last;
     },
-    filter(state: State) {
+    filter(state: State): string | undefined {
       return state.citiesList.filter;
     },
-    preferredCities(state: State) {
+    preferredCities(state: State): PreferredCities | null {
       return state.preferredCities.data;
     },
-    preferredCitiesWithError(state: State) {
+    preferredCitiesWithError(state: State): Array<string> | null {
       return state.preferredCities.withError;
     },
-    preferredCitiesLoading(state: State) {
+    preferredCitiesLoading(state: State): PreferredCitiesMap {
       return state.preferredCities.loading;
+    },
+    searchInformation(state: State): string {
+      if (state.citiesList.total === -1) return "";
+      return `(${(state.citiesList.data || []).length} of ${
+        state.citiesList.total
+      })`;
     }
   },
 
   mutations: {
     setCities(state: State, citiesList: CitiesList) {
-      state.citiesList.data.push(...citiesList.data);
+      if (!state.citiesList.data) state.citiesList.data = [];
+      state.citiesList.data.push(...(citiesList.data || []));
       state.citiesList.total = citiesList.total;
       state.citiesList.links = citiesList.links;
       state.citiesList.filter = citiesList.filter || "";
     },
     clearCities(state: State) {
-      state.citiesList.data.splice(0, state.citiesList.data.length);
-      state.citiesList.data = [];
+      if (state.citiesList.data) {
+        state.citiesList.data.splice(0, state.citiesList.data.length);
+        state.citiesList.data = [];
+      }
       state.citiesList.total = -1;
       state.citiesList.links = {
         first: "",
@@ -93,16 +103,19 @@ const citiesModule: Module<State, {}> = {
     },
     updatePreferredCities(
       state: State,
-      payload: { city: CityInfo; selected: boolean }
+      preferredCities: Array<{ city: CityInfo; selected: boolean }> = []
     ) {
       const preferred: PreferredCities = {
-        ...state.preferredCities.data
+        ...(state.preferredCities.data || {})
       };
-      if (!payload.selected) {
-        delete preferred[payload.city.geonameid];
-      } else {
-        preferred[payload.city.geonameid] = payload.city;
-      }
+      preferredCities.forEach(p => {
+        if (!p.selected) {
+          delete preferred[p.city.geonameid];
+        } else {
+          preferred[p.city.geonameid] = p.city;
+        }
+      });
+
       state.preferredCities.data = preferred;
     },
     addPreferredCitiesError(state: State, geonameid: string) {
@@ -118,6 +131,9 @@ const citiesModule: Module<State, {}> = {
       }
       if (!state.preferredCities.withError.length)
         state.preferredCities.withError = null;
+    },
+    clearPreferredCitiesError(state: State) {
+      state.preferredCities.withError = null;
     },
     setPreferredLoading(
       state: State,
@@ -195,11 +211,11 @@ const citiesModule: Module<State, {}> = {
         citiesApi
           .getCity(geonameId)
           .then(city => {
-            commit("updatePreferredCities", { city, selected: true });
+            commit("updatePreferredCities", [{ city, selected: true }]);
             commit("removePreferredCitiesError", geonameId);
             commit("setPreferredLoading", { geonameId, loading: false });
           })
-          .catch(error => {
+          .catch(() => {
             commit("addPreferredCitiesError", geonameId);
             commit("setPreferredLoading", { geonameId, loading: false });
           });
@@ -221,17 +237,35 @@ const citiesModule: Module<State, {}> = {
     },
     async savePreferredCities(
       { commit, state }: ActionContext<State, {}>,
-      preferred: { city: CityInfo; selected: boolean }
+      preferred: Array<{ city: CityInfo; selected: boolean }> = []
     ) {
-      const city = preferred.city;
-      const selected = preferred.selected;
-      const preferredPatch: PreferredCitiesPatch = {
-        [city.geonameid]: selected
-      };
+      const preferredPatch: PreferredCitiesPatch = {};
+      preferred.forEach(p => {
+        preferredPatch[p.city.geonameid] = p.selected;
+      });
 
       await citiesApi.savePreferredCities(preferredPatch);
-      commit("updatePreferredCities", { city, selected });
+      commit("updatePreferredCities", preferred);
       return state.preferredCities;
+    },
+    async resetPreferredCities({
+      getters,
+      dispatch,
+      commit
+    }: ActionContext<State, {}>) {
+      if (!getters.preferredCities) return;
+      const preferred: any = [];
+
+      Object.keys(getters.preferredCities).forEach((geonameid: string) => {
+        if (getters.preferredCities[geonameid])
+          preferred.push({
+            city: getters.preferredCities[geonameid],
+            selected: false
+          });
+      });
+
+      await dispatch("savePreferredCities", preferred);
+      commit("clearPreferredCitiesError");
     }
   }
 };

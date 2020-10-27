@@ -5,7 +5,7 @@ export interface State {
 }
 
 export type CitiesList = {
-  data: CityInfo[];
+  data: CityInfo[] | null;
   total: number;
   links: {
     first: string;
@@ -30,7 +30,7 @@ export type CityParams = {
 };
 
 export type PreferredCitiesList = {
-  data: PreferredCities;
+  data: PreferredCities | null;
   withError: Array<string> | null;
   loading: PreferredCitiesMap;
 };

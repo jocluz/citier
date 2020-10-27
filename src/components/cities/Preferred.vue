@@ -47,7 +47,7 @@ export default Vue.extend({
   props: {
     items: {
       type: Object,
-      required: true
+      default: () => ({})
     },
     itemId: {
       type: String,
