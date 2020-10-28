@@ -21,6 +21,14 @@ export type CityInfo = {
   name: string;
   country: string;
   subcountry?: string;
+  location?: CityLocation;
+};
+
+export type CityLocation = {
+  lat: number;
+  lng: number;
+  population: number;
+  popupVisibility: boolean;
 };
 
 export type CityParams = {

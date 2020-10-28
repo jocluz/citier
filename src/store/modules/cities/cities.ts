@@ -7,6 +7,7 @@ import {
   PreferredCities,
   PreferredCitiesPatch,
   CityInfo,
+  CityLocation,
   PreferredCitiesMap
 } from "./types";
 
@@ -32,6 +33,7 @@ const citiesModule: Module<State, {}> = {
       withError: null,
       loading: {}
     },
+    // preferredMarks: {},
     cancelRequest: null
   },
 
@@ -152,6 +154,14 @@ const citiesModule: Module<State, {}> = {
         [payload.geonameId]: payload.loading
       };
     },
+    updatePreferredCityLocation(
+      state: State,
+      preferred: { geonameid: string; location: CityLocation }
+    ) {
+      const pref = state.preferredCities.data;
+      if (pref && pref[preferred.geonameid])
+        pref![preferred.geonameid]!.location = preferred.location;
+    },
     setCancelRequest(state: State, cancelFn: any) {
       state.cancelRequest = cancelFn;
     }
@@ -218,7 +228,12 @@ const citiesModule: Module<State, {}> = {
         commit("setPreferredLoading", { geonameId, loading: true });
         citiesApi
           .getCity(geonameId)
-          .then(city => {
+          .then(async (city: CityInfo) => {
+            const location = await citiesApi.getCityLocation(geonameId);
+            if (location) {
+              const { lat, lng, population } = location;
+              city.location = { lat, lng, population, popupVisibility: false };
+            }
             commit("updatePreferredCities", [{ city, selected: true }]);
             commit("removePreferredCitiesError", geonameId);
             commit("setPreferredLoading", { geonameId, loading: false });
@@ -248,12 +263,36 @@ const citiesModule: Module<State, {}> = {
       { commit, state }: ActionContext<State, {}>,
       preferred: Array<{ city: CityInfo; selected: boolean }> = []
     ) {
+      const locationPromise: Array<Promise<any>> = [];
       const preferredPatch: PreferredCitiesPatch = {};
       preferred.forEach(p => {
         preferredPatch[p.city.geonameid] = p.selected;
+        if (p.selected)
+          locationPromise.push(
+            citiesApi.getCityLocation(p.city.geonameid.toString())
+          );
       });
 
       await citiesApi.savePreferredCities(preferredPatch);
+      if (locationPromise.length)
+        await Promise.all(locationPromise).then(locations => {
+          locations.forEach(loc => {
+            const pref:
+              | { city: CityInfo; selected: boolean }
+              | undefined = preferred.find(
+              p => p.city.geonameid === loc.geonameId
+            );
+            if (pref) {
+              const { lat, lng, population } = loc;
+              pref.city.location = {
+                lat,
+                lng,
+                population,
+                popupVisibility: false
+              };
+            }
+          });
+        });
       commit("updatePreferredCities", preferred);
       return state.preferredCities;
     },

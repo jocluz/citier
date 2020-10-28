@@ -1,5 +1,5 @@
 <template>
-  <Section title="Your favorite cities">
+  <Section class="preferred__section" title="Your favorite cities">
     <template v-slot:header>
       <div v-if="!loadingPreferred">
         <el-link
@@ -21,60 +21,68 @@
     </template>
 
     <template v-slot:body>
-      <EmptyState
-        :icon="
-          !preferredCities ? 'el-icon-warning' : 'el-icon-location-outline'
-        "
-        :message="
-          !preferredCities
-            ? 'Failed to load.'
-            : `You don't have favorite cities`
-        "
-        :show-refresh="!preferredCities"
-        @refresh-clicked="fetchPreferredCities"
-        v-if="showPreferredEmptyState"
-      />
-
-      <div
-        v-else
-        class="preferred search__preferred__loading"
+      <PreferredLocation
         v-loading="loadingPreferred"
         element-loading-spinner="el-icon-loading"
-      >
+        class="preferred__map"
+      />
+
+      <div class="preferred__tags">
+        <EmptyState
+          :icon="
+            !preferredCities ? 'el-icon-warning' : 'el-icon-location-outline'
+          "
+          :message="
+            !preferredCities
+              ? 'Failed to load.'
+              : `You don't have favorite cities`
+          "
+          :show-refresh="!preferredCities"
+          @refresh-clicked="fetchPreferredCities"
+          v-if="showPreferredEmptyState"
+        />
+
         <div
-          v-for="item in preferredCities"
-          :key="item.geonameid"
-          class="preferred__item"
-          :class="{
-            saving: isSaving(item),
-            loading: isLoading(item),
-            error: withError(item)
-          }"
+          v-else
+          class="preferred search__preferred__loading"
+          v-loading="loadingPreferred"
+          element-loading-spinner="el-icon-loading"
         >
-          <i v-if="isLoading(item)" class="el-icon-loading"></i>
-
-          <i
-            v-if="withError(item)"
-            @click="refetchPreferredCity(item)"
-            class="el-icon-warning"
-          ></i>
-
           <div
-            class="preferred__item__info"
-            v-if="!isLoading(item) && !withError(item)"
+            v-for="item in preferredCities"
+            :key="item.geonameid"
+            class="preferred__item"
+            :class="{
+              saving: isSaving(item),
+              loading: isLoading(item),
+              error: withError(item)
+            }"
           >
-            <div class="info">
-              <div class="info__title">
-                {{ item.name }}
-              </div>
-              <div class="info__desc">
-                {{ item.subcountry }} - {{ item.country }}
-              </div>
-            </div>
+            <i v-if="isLoading(item)" class="el-icon-loading"></i>
+
             <i
-              :class="`el-icon-${isSaving(item) ? 'loading' : 'delete'}`"
-              @click="saveCity(item, false)"
+              v-if="withError(item)"
+              @click="refetchPreferredCity(item)"
+              class="el-icon-warning"
             ></i>
+
+            <div
+              class="preferred__item__info"
+              v-if="!isLoading(item) && !withError(item)"
+            >
+              <div class="info">
+                <div class="info__title">
+                  {{ item.name }}
+                </div>
+                <div class="info__desc">
+                  {{ item.subcountry }} - {{ item.country }}
+                </div>
+              </div>
+              <i
+                :class="`el-icon-${isSaving(item) ? 'loading' : 'delete'}`"
+                @click="saveCity(item, false)"
+              ></i>
+            </div>
           </div>
         </div>
       </div>
@@ -87,6 +95,7 @@ import Vue from "vue";
 import { mapGetters, mapActions } from "vuex";
 import Section from "../Section.vue";
 import EmptyState from "../EmptyState.vue";
+import PreferredLocation from "./PreferredLocation.vue";
 import { CityInfo } from "../../store/modules/cities/types";
 import { fetchWithRetry } from "./model";
 
@@ -94,7 +103,8 @@ export default Vue.extend({
   name: "Preferred",
   components: {
     EmptyState,
-    Section
+    Section,
+    PreferredLocation
   },
   data() {
     return {
@@ -211,7 +221,6 @@ export default Vue.extend({
   -webkit-box-shadow: $main-shadow;
   -moz-box-shadow: $main-shadow;
   box-shadow: $main-shadow;
-
   max-height: 200px;
   overflow-y: auto;
 
@@ -297,6 +306,30 @@ export default Vue.extend({
         display: flex;
       }
     }
+  }
+}
+
+.preferred__tags {
+  display: none;
+}
+
+.preferred__section {
+  min-height: 300px;
+  height: 300px;
+  margin-bottom: 32px;
+}
+
+@include md {
+  .preferred__section {
+    min-height: unset;
+    height: unset;
+    margin-bottom: 0;
+  }
+  .preferred__tags {
+    display: block;
+  }
+  .preferred__map {
+    display: none;
   }
 }
 
