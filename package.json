@@ -6,6 +6,8 @@
     "start": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "test:unit": "vue-cli-service test:unit",
+    "test:unit:watch": "vue-cli-service test:unit --watchAll",
+    "test:unit:coverage": "vue-cli-service test:unit --collectCoverage",
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
@@ -14,6 +16,7 @@
     "axios": "^0.21.0",
     "core-js": "^3.6.5",
     "element-ui": "^2.13.2",
+    "flush-promises": "^1.0.2",
     "lodash.debounce": "^4.0.8",
     "vue": "^2.6.11",
     "vue-observe-visibility": "^0.4.6",

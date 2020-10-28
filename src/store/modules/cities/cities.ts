@@ -91,6 +91,7 @@ const citiesModule: Module<State, {}> = {
       state.citiesList.filter = "";
     },
     setPreferredCities(state: State, preferredCities: Array<string>) {
+      if (!preferredCities) return;
       state.preferredCities.data = preferredCities.reduce(
         (acc: {}, val: string) => {
           acc[val] = {
@@ -100,6 +101,13 @@ const citiesModule: Module<State, {}> = {
         },
         {}
       );
+    },
+    clearPreferredCities(state: State) {
+      state.preferredCities = {
+        data: null,
+        withError: null,
+        loading: {}
+      };
     },
     updatePreferredCities(
       state: State,
@@ -226,6 +234,7 @@ const citiesModule: Module<State, {}> = {
       dispatch,
       state
     }: ActionContext<State, {}>) {
+      commit("clearPreferredCities");
       const preferredCities = await citiesApi.getPreferredCities();
       commit("setPreferredCities", preferredCities.data);
       dispatch("getCityInfo", preferredCities.data);

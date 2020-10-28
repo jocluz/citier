@@ -1,5 +1,5 @@
 <template>
-  <Section title="Your favorites cities">
+  <Section title="Your favorite cities">
     <template v-slot:header>
       <div v-if="!loadingPreferred">
         <el-link
@@ -28,7 +28,7 @@
         :message="
           !preferredCities
             ? 'Failed to load.'
-            : `You don't have any favourite city`
+            : `You don't have favorite cities`
         "
         :show-refresh="!preferredCities"
         @refresh-clicked="fetchPreferredCities"

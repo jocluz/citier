@@ -19,7 +19,7 @@ export const remove = (config: RequestConfig<void>) =>
   makeRequest<void>(requestFactory<void>(HTTPVerb.DELETE, config));
 
 /**
- * Responisble for actually making the request to the server.
+ * Responsible of making the request to the server.
  * @param config AxiosRequestConfig
  */
 export const makeRequest = <T = any>(config: AxiosRequestConfig): Promise<T> =>

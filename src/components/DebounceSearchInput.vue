@@ -5,7 +5,7 @@
     clearable
     autofocus
     v-model="search"
-    placeholder="Search a city"
+    placeholder="Enter your search"
     @input="debounceFilter($event)"
   >
   </el-input>
